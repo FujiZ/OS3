@@ -4,7 +4,6 @@
 #ifndef DEBUG
 #define DEBUG
 #endif
-#undef DEBUG
 
 
 /* 模拟辅存的文件路径 */
@@ -109,5 +108,6 @@ void do_print_info();
 /* 获取页面保护类型字符串 */
 char *get_proType_str(char *, BYTE);
 
+void init_file();
 
 #endif

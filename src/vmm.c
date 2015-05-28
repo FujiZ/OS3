@@ -1,8 +1,7 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include "vmm.h"
-
 /* 页表 */
 PageTableItem pageTable[PAGE_SUM];
 /* 实存空间 */
@@ -14,7 +13,34 @@ BOOL blockStatus[BLOCK_SUM];
 /* 访存请求 */
 Ptr_MemoryAccessRequest ptr_memAccReq;
 
+void init_file(){
+	int i;
+	char* key = "0123456789ABCDEFGHIJKLMNOPQRSTUVMWYZabcdefghijklmnopqrstuvwxyz";
+	char buffer[VIRTUAL_MEMORY_SIZE + 1];
 
+	if (!(ptr_auxMem = fopen(AUXILIARY_MEMORY, "w+"))){
+		do_error(ERROR_FILE_OPEN_FAILED);
+		exit(1);
+	}
+	for(i=0; i<VIRTUAL_MEMORY_SIZE; i++){
+		buffer[i] = key[rand() % 62];
+	}
+	/*
+	buffer[VIRTUAL_MEMORY_SIZE-3] = 'y';
+	buffer[VIRTUAL_MEMORY_SIZE-2] = 'm';
+	buffer[VIRTUAL_MEMORY_SIZE-1] = 'c';
+	*/
+	buffer[VIRTUAL_MEMORY_SIZE] = '\0';
+
+	//随机生成256位字符串
+	fwrite(buffer, sizeof(BYTE), VIRTUAL_MEMORY_SIZE, ptr_auxMem);
+	/*
+	size_t fwrite(const void* buffer, size_t size, size_t count, FILE* stream)
+	*/
+	fclose(ptr_auxMem);
+	printf("系统提示：初始化辅存模拟文件完成\n");
+	
+}
 
 /* 初始化环境 */
 void do_init()
@@ -69,7 +95,7 @@ void do_init()
 				break;
 		}
 		/* 设置该页对应的辅存地址 */
-		pageTable[i].auxAddr = i * PAGE_SIZE * 2;
+		pageTable[i].auxAddr = i * PAGE_SIZE;
 	}
 	for (j = 0; j < BLOCK_SUM; j++)
 	{
@@ -234,7 +260,7 @@ void do_page_in(Ptr_PageTableItem ptr_pageTabIt, unsigned int blockNum)
 	if (fseek(ptr_auxMem, ptr_pageTabIt->auxAddr, SEEK_SET) < 0)
 	{
 #ifdef DEBUG
-		printf("DEBUG: auxAddr=%u\tftell=%u\n", ptr_pageTabIt->auxAddr, ftell(ptr_auxMem));
+		printf("DEBUG: auxAddr=%lu\tftell=%lu\n", ptr_pageTabIt->auxAddr, ftell(ptr_auxMem));
 #endif
 		do_error(ERROR_FILE_SEEK_FAILED);
 		exit(1);
@@ -243,14 +269,14 @@ void do_page_in(Ptr_PageTableItem ptr_pageTabIt, unsigned int blockNum)
 		sizeof(BYTE), PAGE_SIZE, ptr_auxMem)) < PAGE_SIZE)
 	{
 #ifdef DEBUG
-		printf("DEBUG: auxAddr=%u\tftell=%u\n", ptr_pageTabIt->auxAddr, ftell(ptr_auxMem));
+		printf("DEBUG: auxAddr=%lu\tftell=%lu\n", ptr_pageTabIt->auxAddr, ftell(ptr_auxMem));
 		printf("DEBUG: blockNum=%u\treadNum=%u\n", blockNum, readNum);
-		printf("DEGUB: feof=%d\tferror=%d\n", feof(ptr_auxMem), ferror(ptr_auxMem));
+		printf("DEBUG: feof=%d\tferror=%d\n", feof(ptr_auxMem), ferror(ptr_auxMem));
 #endif
 		do_error(ERROR_FILE_READ_FAILED);
 		exit(1);
 	}
-	printf("调页成功：辅存地址%u-->>物理块%u\n", ptr_pageTabIt->auxAddr, blockNum);
+	printf("调页成功：辅存地址%lu-->>物理块%u\n", ptr_pageTabIt->auxAddr, blockNum);
 }
 
 /* 将被替换页面的内容写回辅存 */
@@ -260,7 +286,7 @@ void do_page_out(Ptr_PageTableItem ptr_pageTabIt)
 	if (fseek(ptr_auxMem, ptr_pageTabIt->auxAddr, SEEK_SET) < 0)
 	{
 #ifdef DEBUG
-		printf("DEBUG: auxAddr=%u\tftell=%u\n", ptr_pageTabIt, ftell(ptr_auxMem));
+		printf("DEBUG: auxAddr=%u\tftell=%ld\n", (unsigned int)ptr_pageTabIt, ftell(ptr_auxMem));
 #endif
 		do_error(ERROR_FILE_SEEK_FAILED);
 		exit(1);
@@ -269,14 +295,14 @@ void do_page_out(Ptr_PageTableItem ptr_pageTabIt)
 		sizeof(BYTE), PAGE_SIZE, ptr_auxMem)) < PAGE_SIZE)
 	{
 #ifdef DEBUG
-		printf("DEBUG: auxAddr=%u\tftell=%u\n", ptr_pageTabIt->auxAddr, ftell(ptr_auxMem));
+		printf("DEBUG: auxAddr=%u\tftell=%ld\n", (unsigned int)ptr_pageTabIt->auxAddr, ftell(ptr_auxMem));
 		printf("DEBUG: writeNum=%u\n", writeNum);
-		printf("DEGUB: feof=%d\tferror=%d\n", feof(ptr_auxMem), ferror(ptr_auxMem));
+		printf("DEBUG: feof=%d\tferror=%d\n", feof(ptr_auxMem), ferror(ptr_auxMem));
 #endif
 		do_error(ERROR_FILE_WRITE_FAILED);
 		exit(1);
 	}
-	printf("写回成功：物理块%u-->>辅存地址%03X\n", ptr_pageTabIt->auxAddr, ptr_pageTabIt->blockNum);
+	printf("写回成功：物理块%lu-->>辅存地址%03X\n", ptr_pageTabIt->auxAddr, ptr_pageTabIt->blockNum);
 }
 
 /* 错误处理 */
@@ -352,7 +378,7 @@ void do_request()
 		case 0: //读请求
 		{
 			ptr_memAccReq->reqType = REQUEST_READ;
-			printf("产生请求：\n地址：%u\t类型：读取\n", ptr_memAccReq->virAddr);
+			printf("产生请求：\n地址：%lu\t类型：读取\n", ptr_memAccReq->virAddr);
 			break;
 		}
 		case 1: //写请求
@@ -360,13 +386,13 @@ void do_request()
 			ptr_memAccReq->reqType = REQUEST_WRITE;
 			/* 随机产生待写入的值 */
 			ptr_memAccReq->value = random() % 0xFFu;
-			printf("产生请求：\n地址：%u\t类型：写入\t值：%02X\n", ptr_memAccReq->virAddr, ptr_memAccReq->value);
+			printf("产生请求：\n地址：%lu\t类型：写入\t值：%02X\n", ptr_memAccReq->virAddr, ptr_memAccReq->value);
 			break;
 		}
 		case 2:
 		{
 			ptr_memAccReq->reqType = REQUEST_EXECUTE;
-			printf("产生请求：\n地址：%u\t类型：执行\n", ptr_memAccReq->virAddr);
+			printf("产生请求：\n地址：%lu\t类型：执行\n", ptr_memAccReq->virAddr);
 			break;
 		}
 		default:
@@ -382,7 +408,7 @@ void do_print_info()
 	printf("页号\t块号\t装入\t修改\t保护\t计数\t辅存\n");
 	for (i = 0; i < PAGE_SUM; i++)
 	{
-		printf("%u\t%u\t%u\t%u\t%s\t%u\t%u\n", i, pageTable[i].blockNum, pageTable[i].filled, 
+		printf("%u\t%u\t%u\t%u\t%s\t%lu\t%lu\n", i, pageTable[i].blockNum, pageTable[i].filled, 
 			pageTable[i].edited, get_proType_str(str, pageTable[i].proType), 
 			pageTable[i].count, pageTable[i].auxAddr);
 	}
@@ -411,6 +437,7 @@ int main(int argc, char* argv[])
 {
 	char c;
 	int i;
+	init_file();
 	if (!(ptr_auxMem = fopen(AUXILIARY_MEMORY, "r+")))
 	{
 		do_error(ERROR_FILE_OPEN_FAILED);
