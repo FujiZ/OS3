@@ -17,9 +17,15 @@
 #define ACTUAL_MEMORY_SIZE (32 * 4)
 /* 总虚页数 */
 #define PAGE_SUM (VIRTUAL_MEMORY_SIZE / PAGE_SIZE)
+/* 一级页表项数 */
+#define OUTER_PAGE_SUM 4
+/* 二级页表项数 */
+#define INNER_PAGE_SUM 16
+
 /* 总物理块数 */
 #define BLOCK_SUM (ACTUAL_MEMORY_SIZE / PAGE_SIZE)
 
+#define PROCESS_SUM 2
 
 /* 可读标识位 */
 #define READABLE 0x01u
@@ -42,14 +48,24 @@ typedef enum {
 /* 页表项 */
 typedef struct
 {
-	unsigned int pageNum;
+	unsigned int pageIndex;//页目录号
+	unsigned int pageNum;//页号
 	unsigned int blockNum; //物理块号
+	unsigned int proccessNum;//该页所属的进程号
 	BOOL filled; //页面装入特征位
 	BYTE proType; //页面保护类型
 	BOOL edited; //页面修改标识
 	unsigned long auxAddr; //外存地址
 	unsigned long count; //页面使用计数器
 } PageTableItem, *Ptr_PageTableItem;
+
+/*
+//二级页表
+typedef struct{
+	unsigned int pageNum;//一级页表页号
+	unsigned int pageIndex;//存储二级页表项的首地址
+}OuterPageTableItem,*Ptr_OuterPageTableItem;
+*/
 
 /* 访存请求类型 */
 typedef enum { 
@@ -62,6 +78,7 @@ typedef enum {
 typedef struct
 {
 	MemoryAccessRequestType reqType; //访存请求类型
+	unsigned int proccessNum;//访问的进程号
 	unsigned long virAddr; //虚地址
 	BYTE value; //写请求的值
 } MemoryAccessRequest, *Ptr_MemoryAccessRequest;
@@ -69,6 +86,7 @@ typedef struct
 
 /* 访存错误代码 */
 typedef enum {
+	ERROE_PROCESS_DENY,//该页不属于该进程
 	ERROR_READ_DENY, //该页不可读
 	ERROR_WRITE_DENY, //该页不可写
 	ERROR_EXECUTE_DENY, //该页不可执行
@@ -79,6 +97,7 @@ typedef enum {
 	ERROR_FILE_SEEK_FAILED, //文件指针定位失败
 	ERROR_FILE_READ_FAILED, //文件读取失败
 	ERROR_FILE_WRITE_FAILED //文件写入失败
+	
 } ERROR_CODE;
 
 /* 产生访存请求 */
