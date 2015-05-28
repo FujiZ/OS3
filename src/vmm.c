@@ -48,7 +48,7 @@ void do_init()
 	int i, j, blockCount;
 	srandom(time(NULL));
 	
-	for (i = 0; i < OUTER_PAGE_SUM; ++i){
+	for (i = 0, blockCount=0; i < OUTER_PAGE_SUM; ++i){
 		for (j = 0; j < INNER_PAGE_SUM; ++j){
 			pageTable[i][j].pageIndex = i;
 			pageTable[i][j].pageNum = j;
@@ -98,7 +98,8 @@ void do_init()
 				break;
 			}
 			/* 设置该页对应的辅存地址 */
-			pageTable[i][j].auxAddr = i * j * PAGE_SIZE;
+			//此处需要修改
+			pageTable[i][j].auxAddr = (blockCount++) * PAGE_SIZE;
 		}
 	}
 
@@ -398,7 +399,7 @@ void do_request()
 		case 0: //读请求
 		{
 			ptr_memAccReq->reqType = REQUEST_READ;
-			printf("产生请求：\n地址：%lu\t进程: %lu\t类型：读取\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum);
+			printf("产生请求：\n地址：%lu\t进程: %u\t类型：读取\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum);
 			break;
 		}
 		case 1: //写请求
@@ -406,13 +407,13 @@ void do_request()
 			ptr_memAccReq->reqType = REQUEST_WRITE;
 			/* 随机产生待写入的值 */
 			ptr_memAccReq->value = random() % 0xFFu;
-			printf("产生请求：\n地址：%lu\t进程: %lu\t类型：写入\t值：%02X\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum,ptr_memAccReq->value);
+			printf("产生请求：\n地址：%lu\t进程: %u\t类型：写入\t值：%02X\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum,ptr_memAccReq->value);
 			break;
 		}
 		case 2:
 		{
 			ptr_memAccReq->reqType = REQUEST_EXECUTE;
-			printf("产生请求：\n地址：%lu\t进程: %lu\t类型：执行\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum);
+			printf("产生请求：\n地址：%lu\t进程: %u\t类型：执行\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum);
 			break;
 		}
 		default:
@@ -425,7 +426,7 @@ void do_print_info()
 {
 	unsigned int i, j, k;
 	char str[4];
-	printf("页目录号\t页号\t块号\t进程\t装入\t修改\t保护\t计数\t辅存\n");
+	printf("目录\t页号\t块号\t进程\t装入\t修改\t保护\t计数\t辅存\n");
 
 	for (i = 0; i < OUTER_PAGE_SUM; ++i){
 		for (j = 0; j < INNER_PAGE_SUM; ++j){
