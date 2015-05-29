@@ -106,7 +106,8 @@ void do_init()
 	for (i = 0, blockCount=0; i < 2; ++i){
 		for (j = 0; j < INNER_PAGE_SUM; ++j){
 			/* 随机选择一些物理块进行页面装入 */
-			if (random() % 2 == 0)
+			if(1)//将所有块填满，用来测试页表调度
+			//if (random() % 2 == 0)
 			{
 				do_page_in(&pageTable[i][j], blockCount);
 				pageTable[i][j].blockNum = blockCount;
@@ -387,25 +388,32 @@ void do_error(ERROR_CODE code)
 
 /* 产生访存请求 */
 void do_request(){
-	int reqType;
-	scanf("%lu%u%d", &ptr_memAccReq->virAddr, &ptr_memAccReq->proccessNum,&reqType);
+	char reqType;
+	printf("请输入访存请求的地址 进程号\n");
+	scanf("%lu%u", &ptr_memAccReq->virAddr, &ptr_memAccReq->proccessNum);
+	while (getchar() != '\n');
+	printf("请输入访存请求的类型（r/w/e)\n");
+	reqType=getchar();
+	while (getchar() != '\n');
 	switch (reqType){
-	case 0://读请求
+	case 'r'://读请求
 	{
 		ptr_memAccReq->reqType = REQUEST_READ;
 		printf("产生请求：\n地址：%lu\t进程: %u\t类型：读取\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum);
 		break;
 	}
-	case 1: //写请求
+	case 'w': //写请求
 	{
 		ptr_memAccReq->reqType = REQUEST_WRITE;
 		/* 读入待写入的值 */
+		printf("请输入要修改的值\n");
 		scanf("%hhu", &ptr_memAccReq->value);
+		while (getchar() != '\n');
 		ptr_memAccReq->value = random() % 0xFFu;
 		printf("产生请求：\n地址：%lu\t进程: %u\t类型：写入\t值：%02X\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum, ptr_memAccReq->value);
 		break;
 	}
-	case 2:
+	case 'e':
 	{
 		ptr_memAccReq->reqType = REQUEST_EXECUTE;
 		printf("产生请求：\n地址：%lu\t进程: %u\t类型：执行\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum);
