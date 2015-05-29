@@ -116,7 +116,8 @@ void do_page_fault(Ptr_PageTableItem);
 
 /* LFU页面替换 */
 void do_LFU(Ptr_PageTableItem);
-
+/* 页面老化页面替换 */
+void do_LRU(Ptr_PageTableItem);
 /* 装入页面 */
 void do_page_in(Ptr_PageTableItem, unsigned in);
 
@@ -133,6 +134,8 @@ void do_print_info();
 char *get_proType_str(char *, BYTE);
 
 void init_file();
+
+void init_fifo();
 
 void do_update();
 

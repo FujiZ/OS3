@@ -54,24 +54,6 @@ void init_file(){
 void do_init()
 {
 	int i, j, blockCount;
-	struct stat statbuf;
-	if (stat("/tmp/server", &statbuf) == 0){
-		/* 如果FIFO文件存在,删掉 */
-		if (remove("/tmp/server")<0){
-			printf("remove failed");
-			exit(-1);
-		}
-	}
-
-	if (mkfifo("/tmp/server", 0666)<0){
-		printf("mkfifo failed");
-		exit(-1);
-	}
-	/* 在阻塞模式下打开FIFO */
-	if ((fifo = open("/tmp/server", O_RDONLY))<0){
-		printf("open fifo failed");
-		exit(-1);
-	}
 
 	srandom(time(NULL));
 	
@@ -148,6 +130,27 @@ void do_init()
 		}
 	}
 
+}
+//初始化FIFO
+void init_fifo(){
+	struct stat statbuf;
+	if (stat("/tmp/server", &statbuf) == 0){
+		/* 如果FIFO文件存在,删掉 */
+		if (remove("/tmp/server")<0){
+			printf("remove failed");
+			exit(-1);
+		}
+	}
+
+	if (mkfifo("/tmp/server", 0666)<0){
+		printf("mkfifo failed");
+		exit(-1);
+	}
+	/* 在阻塞模式下打开FIFO */
+	if ((fifo = open("/tmp/server", O_RDONLY))<0){
+		printf("open fifo failed");
+		exit(-1);
+	}
 }
 
 /* 响应请求 */
@@ -308,7 +311,7 @@ void do_LRU(Ptr_PageTableItem ptr_pageTabIt){
 	printf("没有空闲物理块，开始进行页面老化页面替换...\n");
 	for (i = 0, min = 0xFF, index = 0, page = 0; i < OUTER_PAGE_SUM; i++){
 		for (j = 0; j < INNER_PAGE_SUM; ++j){
-			if (pageTable[i][j].shiftReg < min){
+			if (pageTable[i][j].filled==TRUE&&pageTable[i][j].shiftReg < min){
 				min = pageTable[i][j].shiftReg;
 				index = i;
 				page = j;
@@ -524,6 +527,7 @@ int main(int argc, char* argv[])
 	
 	do_init();
 	do_print_info();
+	init_fifo();
 	ptr_memAccReq = (Ptr_MemoryAccessRequest) malloc(sizeof(MemoryAccessRequest));
 	/* 在循环中模拟访存请求与处理过程 */
 	while (TRUE)
