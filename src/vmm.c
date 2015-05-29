@@ -498,10 +498,11 @@ void do_print_virtual(){
 	for (i = 0; i < PAGE_SUM; ++i){
 		printf("%d\t", i);
 		for (j = 0; j < PAGE_SIZE; ++j){
-			printf("%02X", PAGE_SIZE*i + j);
+			printf("%02X",fgetc(fp));
 		}
 		printf("\n");
 	}
+	fclose(fp);
 }
 /* 获取页面保护类型字符串 */
 char *get_proType_str(char *str, BYTE type)
