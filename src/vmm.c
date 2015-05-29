@@ -167,7 +167,7 @@ void do_response()
 	}
 	
 	/* 计算页号和页内偏移值 */
-	pageIndex = ptr_memAccReq->virAddr / PAGE_SIZE / INNER_PAGE_SUM;
+	pageIndex = ptr_memAccReq->virAddr / OUTER_PAGE_SIZE;
 	pageNum = ptr_memAccReq->virAddr / PAGE_SIZE - pageIndex * INNER_PAGE_SUM;
 	offAddr = ptr_memAccReq->virAddr % PAGE_SIZE;
 	printf("页目录号为：%u\t页号为：%u\t页内偏移为：%u\n", pageIndex, pageNum, offAddr);
@@ -477,6 +477,32 @@ void do_print_info()
 
 }
 
+/* 打印实存 */
+void do_print_real(){
+	int i, j;
+	printf("块号\t使用\t内容\n");
+	for (i = 0; i < BLOCK_SUM; ++i){
+		printf("%d\t%d\t", i, (int)blockStatus[i]);
+		for (j = 0; j < PAGE_SIZE; ++j){
+			printf("%02X", actMem[i*PAGE_SIZE + j]);
+		}
+		printf("\n");
+	}
+}
+/* 打印辅存 */
+void do_print_virtual(){
+	int i, j;
+	FILE* fp = NULL;
+	fp = fopen(AUXILIARY_MEMORY, "r");
+	printf("块号\t内容\n");
+	for (i = 0; i < PAGE_SUM; ++i){
+		printf("%d\t", i);
+		for (j = 0; j < PAGE_SIZE; ++j){
+			printf("%02X", PAGE_SIZE*i + j);
+		}
+		printf("\n");
+	}
+}
 /* 获取页面保护类型字符串 */
 char *get_proType_str(char *str, BYTE type)
 {
@@ -543,6 +569,8 @@ int main(int argc, char* argv[])
 				do_print_info();
 			while (c != '\n')
 				c = getchar();
+			do_print_real();
+			do_print_virtual();
 			printf("按X退出程序，按其他键继续...\n");
 			if ((c = getchar()) == 'x' || c == 'X')
 				break;

@@ -25,6 +25,11 @@
 /* 总物理块数 */
 #define BLOCK_SUM (ACTUAL_MEMORY_SIZE / PAGE_SIZE)
 
+/*一级页表项映射的内存空间大小*/
+#define OUTER_PAGE_SIZE (PAGE_SIZE * INNER_PAGE_SUM)
+
+
+
 #define PROCESS_SUM 2
 
 /* 可读标识位 */
@@ -129,6 +134,11 @@ void do_error(ERROR_CODE);
 
 /* 打印页表相关信息 */
 void do_print_info();
+/* 打印实存 */
+void do_print_real();
+/* 打印辅存 */
+void do_print_virtual();
+
 
 /* 获取页面保护类型字符串 */
 char *get_proType_str(char *, BYTE);
