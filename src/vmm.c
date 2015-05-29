@@ -1,5 +1,10 @@
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
 #include <time.h>
 #include "vmm.h"
 /* 页表 */
@@ -12,6 +17,8 @@ FILE *ptr_auxMem;
 BOOL blockStatus[BLOCK_SUM];
 /* 访存请求 */
 Ptr_MemoryAccessRequest ptr_memAccReq;
+
+int fifo;//fifo文件
 
 void init_file(){
 	int i;
@@ -46,6 +53,19 @@ void init_file(){
 void do_init()
 {
 	int i, j, blockCount;
+	struct stat statbuf;
+	if (stat("/tmp/server", &statbuf) == 0){
+		/* 如果FIFO文件存在,删掉 */
+		if (remove("/tmp/server")<0)
+			error_sys("remove failed");
+	}
+
+	if (mkfifo("/tmp/server", 0666)<0)
+		error_sys("mkfifo failed");
+	/* 在非阻塞模式下打开FIFO */
+	if ((fifo = open("/tmp/server", O_RDONLY | O_NONBLOCK))<0)
+		error_sys("open fifo failed");
+
 	srandom(time(NULL));
 	
 	for (i = 0, blockCount=0; i < OUTER_PAGE_SUM; ++i){
@@ -121,7 +141,6 @@ void do_init()
 	}
 
 }
-
 
 /* 响应请求 */
 void do_response()
@@ -500,7 +519,7 @@ char *get_proType_str(char *str, BYTE type)
 int main(int argc, char* argv[])
 {
 	char c;
-	int i;
+	int i, count = 0;
 	init_file();
 	if (!(ptr_auxMem = fopen(AUXILIARY_MEMORY, "r+")))
 	{
@@ -514,19 +533,26 @@ int main(int argc, char* argv[])
 	/* 在循环中模拟访存请求与处理过程 */
 	while (TRUE)
 	{
-		do_request();
-		do_response();
-		printf("按Y打印页表，按其他键不打印...\n");
-		if ((c = getchar()) == 'y' || c == 'Y')
-			do_print_info();
-		while (c != '\n')
-			c = getchar();
-		printf("按X退出程序，按其他键继续...\n");
-		if ((c = getchar()) == 'x' || c == 'X')
-			break;
-		while (c != '\n')
-			c = getchar();
-		//sleep(5000);
+		//从FIFO中读取命令
+		memset(ptr_memAccReq, 0, DATALEN);
+		if ((count = read(fifo, ptr_memAccReq, DATALEN))<0)
+			error_sys("read fifo failed");
+		if (count){
+			printf("收到请求\n");
+			//do_request();
+			do_response();
+			printf("按Y打印页表，按其他键不打印...\n");
+			if ((c = getchar()) == 'y' || c == 'Y')
+				do_print_info();
+			while (c != '\n')
+				c = getchar();
+			printf("按X退出程序，按其他键继续...\n");
+			if ((c = getchar()) == 'x' || c == 'X')
+				break;
+			while (c != '\n')
+				c = getchar();
+			//sleep(5000);
+		}
 	}
 
 	if (fclose(ptr_auxMem) == EOF)
@@ -534,5 +560,7 @@ int main(int argc, char* argv[])
 		do_error(ERROR_FILE_CLOSE_FAILED);
 		exit(1);
 	}
+
+	close(fifo);
 	return (0);
 }
