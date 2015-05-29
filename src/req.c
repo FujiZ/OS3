@@ -27,7 +27,7 @@ void do_request(Ptr_MemoryAccessRequest ptr_memAccReq){
 		ptr_memAccReq->reqType = REQUEST_WRITE;
 		/* 读入待写入的值 */
 		printf("请输入要修改的值\n");
-		scanf("%x",&(ptr_memAccReq->value));
+		scanf("%02x",&(ptr_memAccReq->value));
 		while (getchar() != '\n');
 		printf("产生请求：\n地址：%lu\t进程: %u\t类型：写入\t值：%02X\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum, ptr_memAccReq->value);
 		break;

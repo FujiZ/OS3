@@ -7,6 +7,8 @@
 #include <fcntl.h>
 #include <time.h>
 #include "vmm.h"
+
+#define DEBUG
 /* 页表 */
 PageTableItem pageTable[OUTER_PAGE_SUM][INNER_PAGE_SUM];
 /* 实存空间 */
@@ -33,11 +35,6 @@ void init_file(){
 	for(i=0; i<VIRTUAL_MEMORY_SIZE; i++){
 		buffer[i] = key[rand() % 62];
 	}
-	/*
-	buffer[VIRTUAL_MEMORY_SIZE-3] = 'y';
-	buffer[VIRTUAL_MEMORY_SIZE-2] = 'm';
-	buffer[VIRTUAL_MEMORY_SIZE-1] = 'c';
-	*/
 	buffer[VIRTUAL_MEMORY_SIZE] = '\0';
 
 	//随机生成256位字符串
@@ -64,7 +61,7 @@ void do_init()
 			pageTable[i][j].filled = FALSE;
 			pageTable[i][j].edited = FALSE;
 			pageTable[i][j].count = 0;
-			pageTable[i][j].r = 0;//初始化每个页的访问位
+			pageTable[i][j].r = FALSE;//初始化每个页的访问位
 			pageTable[i][j].shiftReg = 0;//初始化每个页的移位寄存器
 			pageTable[i][j].proccessNum = random() % PROCESS_SUM;//设置该页所属的进程
 			/* 使用随机数设置该页的保护类型 */
@@ -194,7 +191,7 @@ void do_response()
 		case REQUEST_READ: //读请求
 		{
 			ptr_pageTabIt->count++;
-			ptr_pageTabIt->r = 1;
+			ptr_pageTabIt->r = TRUE;
 
 			if (!(ptr_pageTabIt->proType & READABLE)) //页面不可读
 			{
@@ -208,7 +205,7 @@ void do_response()
 		case REQUEST_WRITE: //写请求
 		{
 			ptr_pageTabIt->count++;
-			ptr_pageTabIt->r = 1;
+			ptr_pageTabIt->r = TRUE;
 			if (!(ptr_pageTabIt->proType & WRITABLE)) //页面不可写
 			{
 				do_error(ERROR_WRITE_DENY);	
@@ -223,7 +220,7 @@ void do_response()
 		case REQUEST_EXECUTE: //执行请求
 		{
 			ptr_pageTabIt->count++;
-			ptr_pageTabIt->r = 1;
+			ptr_pageTabIt->r = TRUE;
 			if (!(ptr_pageTabIt->proType & EXECUTABLE)) //页面不可执行
 			{
 				do_error(ERROR_EXECUTE_DENY);
@@ -259,7 +256,7 @@ void do_page_fault(Ptr_PageTableItem ptr_pageTabIt)
 			ptr_pageTabIt->edited = FALSE;
 			ptr_pageTabIt->count = 0;
 			ptr_pageTabIt->shiftReg = 0;
-			ptr_pageTabIt->r = 0;
+			ptr_pageTabIt->r = FALSE;
 			blockStatus[i] = TRUE;
 			return;
 		}
@@ -328,7 +325,7 @@ void do_LRU(Ptr_PageTableItem ptr_pageTabIt){
 	pageTable[index][page].filled = FALSE;
 	pageTable[index][page].count = 0;
 	pageTable[index][page].shiftReg = 0;
-	pageTable[index][page].r = 0;
+	pageTable[index][page].r = FALSE;
 	/* 读辅存内容，写入到实存 */
 	do_page_in(ptr_pageTabIt, pageTable[index][page].blockNum);
 
@@ -338,7 +335,7 @@ void do_LRU(Ptr_PageTableItem ptr_pageTabIt){
 	ptr_pageTabIt->edited = FALSE;
 	ptr_pageTabIt->count = 0;
 	ptr_pageTabIt->shiftReg = 0;
-	ptr_pageTabIt->r = 0;
+	ptr_pageTabIt->r = FALSE;
 	printf("页面替换成功\n");
 }
 
@@ -465,13 +462,13 @@ void do_print_info()
 {
 	unsigned int i, j, k;
 	char str[4];
-	printf("目录\t页号\t块号\t进程\t装入\t修改\t保护\t计数\t辅存\n");
+	printf("目录\t页号\t块号\t进程\t装入\t修改\t保护\t计数\t辅存\tSftReg\n");
 
 	for (i = 0; i < OUTER_PAGE_SUM; ++i){
 		for (j = 0; j < INNER_PAGE_SUM; ++j){
-			printf("%u\t%u\t%u\t%u\t%u\t%u\t%s\t%lu\t%lu\n", i, j, pageTable[i][j].blockNum, pageTable[i][j].proccessNum, pageTable[i][j].filled,
+			printf("%u\t%u\t%u\t%u\t%u\t%u\t%s\t%lu\t%lu\t%02X\n", i, j, pageTable[i][j].blockNum, pageTable[i][j].proccessNum, pageTable[i][j].filled,
 				pageTable[i][j].edited, get_proType_str(str, pageTable[i][j].proType),
-				pageTable[i][j].count, pageTable[i][j].auxAddr);
+				pageTable[i][j].count, pageTable[i][j].auxAddr, pageTable[i][j].shiftReg);
 		}
 	}
 
@@ -565,13 +562,21 @@ int main(int argc, char* argv[])
 			printf("收到请求\n");
 			do_response();
 			do_update();
+			printf("按A打印实存内容，按其他键不打印...\n");
+			if ((c = getchar()) == 'a' || c == 'A')
+				do_print_real();
+			while (c != '\n')
+				c = getchar();
+			printf("按B打印虚存内容，按其他键不打印...\n");
+			if ((c = getchar()) == 'b' || c == 'B')
+				do_print_virtual();
+			while (c != '\n')
+				c = getchar();
 			printf("按Y打印页表，按其他键不打印...\n");
 			if ((c = getchar()) == 'y' || c == 'Y')
 				do_print_info();
 			while (c != '\n')
 				c = getchar();
-			do_print_real();
-			do_print_virtual();
 			printf("按X退出程序，按其他键继续...\n");
 			if ((c = getchar()) == 'x' || c == 'X')
 				break;

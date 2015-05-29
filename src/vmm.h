@@ -64,7 +64,7 @@ typedef struct
 	unsigned long auxAddr; //外存地址
 	unsigned long count; //页面使用计数器
 	unsigned char shiftReg;//移位寄存器，用于页面老化算法
-	unsigned char r;//页面访问位，表示最近一段时间该页面有无被访问
+	BOOL r;//页面访问位，表示最近一段时间该页面有无被访问
 } PageTableItem, *Ptr_PageTableItem;
 
 /*
