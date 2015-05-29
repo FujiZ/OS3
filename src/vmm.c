@@ -56,15 +56,21 @@ void do_init()
 	struct stat statbuf;
 	if (stat("/tmp/server", &statbuf) == 0){
 		/* 如果FIFO文件存在,删掉 */
-		if (remove("/tmp/server")<0)
-			error_sys("remove failed");
+		if (remove("/tmp/server")<0){
+			printf("remove failed");
+			exit(-1);
+		}
 	}
 
-	if (mkfifo("/tmp/server", 0666)<0)
-		error_sys("mkfifo failed");
+	if (mkfifo("/tmp/server", 0666)<0){
+		printf("mkfifo failed");
+		exit(-1);
+	}
 	/* 在非阻塞模式下打开FIFO */
-	if ((fifo = open("/tmp/server", O_RDONLY | O_NONBLOCK))<0)
-		error_sys("open fifo failed");
+	if ((fifo = open("/tmp/server", O_RDONLY | O_NONBLOCK))<0){
+		printf("open fifo failed");
+		exit(-1);
+	}
 
 	srandom(time(NULL));
 	
@@ -534,12 +540,9 @@ int main(int argc, char* argv[])
 	while (TRUE)
 	{
 		//从FIFO中读取命令
-		memset(ptr_memAccReq, 0, DATALEN);
-		if ((count = read(fifo, ptr_memAccReq, DATALEN))<0)
-			error_sys("read fifo failed");
-		if (count){
+		//memset(ptr_memAccReq, 0, DATALEN);
+		if ((count = read(fifo, ptr_memAccReq, DATALEN))==DATALEN){
 			printf("收到请求\n");
-			//do_request();
 			do_response();
 			printf("按Y打印页表，按其他键不打印...\n");
 			if ((c = getchar()) == 'y' || c == 'Y')
@@ -551,7 +554,6 @@ int main(int argc, char* argv[])
 				break;
 			while (c != '\n')
 				c = getchar();
-			//sleep(5000);
 		}
 	}
 

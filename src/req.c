@@ -83,10 +83,14 @@ int main(int argc, char* argv[]){
 	int fd;
 	Ptr_MemoryAccessRequest ptr_memAccReq = (Ptr_MemoryAccessRequest)malloc(sizeof(MemoryAccessRequest));
 	do_request(ptr_memAccReq);
-	if ((fd = open("/tmp/server", O_WRONLY))<0)
-		error_sys("req open fifo failed");
-	if (write(fd, ptr_memAccReq, DATALEN)<0)
-		error_sys("req write failed");
+	if ((fd = open("/tmp/server", O_WRONLY))<0){
+		printf("req open fifo failed");
+		exit(-1);
+	}
+	if (write(fd, ptr_memAccReq, DATALEN)<0){
+		printf("req write failed");
+		exit(-1);
+	}
 	close(fd);
 	return 0;
 }
