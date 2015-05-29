@@ -25,22 +25,16 @@ int count;//表示当前周期数
 
 void init_file(){
 	int i;
-	unsigned char buffer[VIRTUAL_MEMORY_SIZE + 1];
 
 	if (!(ptr_auxMem = fopen(AUXILIARY_MEMORY, "w"))){
 		do_error(ERROR_FILE_OPEN_FAILED);
 		exit(1);
 	}
-	for(i=0; i<VIRTUAL_MEMORY_SIZE; i++){
-		buffer[i] =random() % 256;
-	}
-	buffer[VIRTUAL_MEMORY_SIZE] = '\0';
-
 	//随机生成256位字符串
-	fwrite(buffer, sizeof(BYTE), VIRTUAL_MEMORY_SIZE, ptr_auxMem);
-	/*
-	size_t fwrite(const void* buffer, size_t size, size_t count, FILE* stream)
-	*/
+	for(i=0; i<VIRTUAL_MEMORY_SIZE; i++){
+		fputc((unsigned char)random() % 256,ptr_auxMem);
+	}
+
 	fclose(ptr_auxMem);
 	printf("系统提示：初始化辅存模拟文件完成\n");
 	
