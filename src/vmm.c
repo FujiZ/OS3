@@ -19,6 +19,7 @@ BOOL blockStatus[BLOCK_SUM];
 Ptr_MemoryAccessRequest ptr_memAccReq;
 
 int fifo;//fifo文件
+int count;//表示当前周期数
 
 void init_file(){
 	int i;
@@ -66,8 +67,8 @@ void do_init()
 		printf("mkfifo failed");
 		exit(-1);
 	}
-	/* 在非阻塞模式下打开FIFO */
-	if ((fifo = open("/tmp/server", O_RDONLY | O_NONBLOCK))<0){
+	/* 在阻塞模式下打开FIFO */
+	if ((fifo = open("/tmp/server", O_RDONLY))<0){
 		printf("open fifo failed");
 		exit(-1);
 	}
@@ -81,6 +82,8 @@ void do_init()
 			pageTable[i][j].filled = FALSE;
 			pageTable[i][j].edited = FALSE;
 			pageTable[i][j].count = 0;
+			pageTable[i][j].r = 0;//初始化每个页的访问位
+			pageTable[i][j].shiftReg = 0;//初始化每个页的移位寄存器
 			pageTable[i][j].proccessNum = random() % PROCESS_SUM;//设置该页所属的进程
 			/* 使用随机数设置该页的保护类型 */
 			switch (random() % 7)
@@ -124,7 +127,6 @@ void do_init()
 				break;
 			}
 			/* 设置该页对应的辅存地址 */
-			//此处需要修改
 			pageTable[i][j].auxAddr = (blockCount++) * PAGE_SIZE;
 		}
 	}
@@ -154,7 +156,6 @@ void do_response()
 	Ptr_PageTableItem ptr_pageTabIt;
 	unsigned int pageIndex, pageNum, offAddr;
 	unsigned int actAddr;
-	
 	/* 检查地址是否越界 */
 	if (ptr_memAccReq->virAddr < 0 || ptr_memAccReq->virAddr >= VIRTUAL_MEMORY_SIZE)
 	{
@@ -190,6 +191,8 @@ void do_response()
 		case REQUEST_READ: //读请求
 		{
 			ptr_pageTabIt->count++;
+			ptr_pageTabIt->r = 1;
+
 			if (!(ptr_pageTabIt->proType & READABLE)) //页面不可读
 			{
 				do_error(ERROR_READ_DENY);
@@ -202,6 +205,7 @@ void do_response()
 		case REQUEST_WRITE: //写请求
 		{
 			ptr_pageTabIt->count++;
+			ptr_pageTabIt->r = 1;
 			if (!(ptr_pageTabIt->proType & WRITABLE)) //页面不可写
 			{
 				do_error(ERROR_WRITE_DENY);	
@@ -216,6 +220,7 @@ void do_response()
 		case REQUEST_EXECUTE: //执行请求
 		{
 			ptr_pageTabIt->count++;
+			ptr_pageTabIt->r = 1;
 			if (!(ptr_pageTabIt->proType & EXECUTABLE)) //页面不可执行
 			{
 				do_error(ERROR_EXECUTE_DENY);
@@ -230,6 +235,7 @@ void do_response()
 			return;
 		}
 	}
+
 }
 
 /* 处理缺页中断 */
@@ -249,13 +255,15 @@ void do_page_fault(Ptr_PageTableItem ptr_pageTabIt)
 			ptr_pageTabIt->filled = TRUE;
 			ptr_pageTabIt->edited = FALSE;
 			ptr_pageTabIt->count = 0;
-			
+			ptr_pageTabIt->shiftReg = 0;
+			ptr_pageTabIt->r = 0;
 			blockStatus[i] = TRUE;
 			return;
 		}
 	}
 	/* 没有空闲物理块，进行页面替换 */
-	do_LFU(ptr_pageTabIt);
+	//do_LFU(ptr_pageTabIt);
+	do_LRU(ptr_pageTabIt);
 }
 
 /* 根据LFU算法进行页面替换 */
@@ -290,6 +298,44 @@ void do_LFU(Ptr_PageTableItem ptr_pageTabIt)
 	ptr_pageTabIt->filled = TRUE;
 	ptr_pageTabIt->edited = FALSE;
 	ptr_pageTabIt->count = 0;
+	printf("页面替换成功\n");
+}
+
+/* 根据页面老化算法进行页面替换 */
+void do_LRU(Ptr_PageTableItem ptr_pageTabIt){
+	unsigned int i, j, index, page;
+	unsigned char min;
+	printf("没有空闲物理块，开始进行页面老化页面替换...\n");
+	for (i = 0, min = 0xFF, index = 0, page = 0; i < OUTER_PAGE_SUM; i++){
+		for (j = 0; j < INNER_PAGE_SUM; ++j){
+			if (pageTable[i][j].shiftReg < min){
+				min = pageTable[i][j].shiftReg;
+				index = i;
+				page = j;
+			}
+		}
+	}
+	printf("选择第%u_%u页进行替换\n", index, page);
+	if (pageTable[index][page].edited)
+	{
+		/* 页面内容有修改，需要写回至辅存 */
+		printf("该页内容有修改，写回至辅存\n");
+		do_page_out(&pageTable[index][page]);
+	}
+	pageTable[index][page].filled = FALSE;
+	pageTable[index][page].count = 0;
+	pageTable[index][page].shiftReg = 0;
+	pageTable[index][page].r = 0;
+	/* 读辅存内容，写入到实存 */
+	do_page_in(ptr_pageTabIt, pageTable[index][page].blockNum);
+
+	/* 更新页表内容 */
+	ptr_pageTabIt->blockNum = pageTable[index][page].blockNum;
+	ptr_pageTabIt->filled = TRUE;
+	ptr_pageTabIt->edited = FALSE;
+	ptr_pageTabIt->count = 0;
+	ptr_pageTabIt->shiftReg = 0;
+	ptr_pageTabIt->r = 0;
 	printf("页面替换成功\n");
 }
 
@@ -411,81 +457,6 @@ void do_error(ERROR_CODE code)
 	}
 }
 
-/* 产生访存请求 */
-void do_request(){
-	char reqType;
-	printf("请输入访存请求的地址 进程号\n");
-	scanf("%lu%u", &ptr_memAccReq->virAddr, &ptr_memAccReq->proccessNum);
-	while (getchar() != '\n');
-	printf("请输入访存请求的类型（r/w/e)\n");
-	reqType=getchar();
-	while (getchar() != '\n');
-	switch (reqType){
-	case 'r'://读请求
-	{
-		ptr_memAccReq->reqType = REQUEST_READ;
-		printf("产生请求：\n地址：%lu\t进程: %u\t类型：读取\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum);
-		break;
-	}
-	case 'w': //写请求
-	{
-		ptr_memAccReq->reqType = REQUEST_WRITE;
-		/* 读入待写入的值 */
-		printf("请输入要修改的值\n");
-		scanf("%hhu", &ptr_memAccReq->value);
-		while (getchar() != '\n');
-		ptr_memAccReq->value = random() % 0xFFu;
-		printf("产生请求：\n地址：%lu\t进程: %u\t类型：写入\t值：%02X\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum, ptr_memAccReq->value);
-		break;
-	}
-	case 'e':
-	{
-		ptr_memAccReq->reqType = REQUEST_EXECUTE;
-		printf("产生请求：\n地址：%lu\t进程: %u\t类型：执行\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum);
-		break;
-	}
-	default:
-		break;
-	}
-}
-
-
-
-//void do_request()
-//{
-//
-//	/* 请求地址 */
-//	ptr_memAccReq->virAddr = random() % VIRTUAL_MEMORY_SIZE;
-//	/* 请求进程 */
-//	ptr_memAccReq->proccessNum = random() % PROCESS_SUM;
-//	/* 随机产生请求类型 */
-//	switch (random() % 3)
-//	{
-//		case 0: //读请求
-//		{
-//			ptr_memAccReq->reqType = REQUEST_READ;
-//			printf("产生请求：\n地址：%lu\t进程: %u\t类型：读取\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum);
-//			break;
-//		}
-//		case 1: //写请求
-//		{
-//			ptr_memAccReq->reqType = REQUEST_WRITE;
-//			/* 随机产生待写入的值 */
-//			ptr_memAccReq->value = random() % 0xFFu;
-//			printf("产生请求：\n地址：%lu\t进程: %u\t类型：写入\t值：%02X\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum,ptr_memAccReq->value);
-//			break;
-//		}
-//		case 2:
-//		{
-//			ptr_memAccReq->reqType = REQUEST_EXECUTE;
-//			printf("产生请求：\n地址：%lu\t进程: %u\t类型：执行\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum);
-//			break;
-//		}
-//		default:
-//			break;
-//	}
-//}
-
 /* 打印页表 */
 void do_print_info()
 {
@@ -522,10 +493,28 @@ char *get_proType_str(char *str, BYTE type)
 	return str;
 }
 
+void do_update(){
+	int i, j;
+	if ((++count) >= CYCLE){//到达更新时间片的时间
+		for (i = 0; i < OUTER_PAGE_SUM; ++i){
+			for (j = 0; j < INNER_PAGE_SUM; ++j){
+				//将shiftReg右移1位
+				pageTable[i][j].shiftReg = pageTable[i][j].shiftReg >> 1;
+				//判断读取位
+				if (pageTable[i][j].r){
+					pageTable[i][j].shiftReg = pageTable[i][j].shiftReg | 0x80;
+					pageTable[i][j].r = 0;
+				}
+			}
+		}
+		count = 0;
+	}
+}
+
 int main(int argc, char* argv[])
 {
 	char c;
-	int i, count = 0;
+	int i;
 	init_file();
 	if (!(ptr_auxMem = fopen(AUXILIARY_MEMORY, "r+")))
 	{
@@ -541,9 +530,10 @@ int main(int argc, char* argv[])
 	{
 		//从FIFO中读取命令
 		//memset(ptr_memAccReq, 0, DATALEN);
-		if ((count = read(fifo, ptr_memAccReq, DATALEN))==DATALEN){
+		if (read(fifo, ptr_memAccReq, DATALEN)==DATALEN){
 			printf("收到请求\n");
 			do_response();
+			do_update();
 			printf("按Y打印页表，按其他键不打印...\n");
 			if ((c = getchar()) == 'y' || c == 'Y')
 				do_print_info();

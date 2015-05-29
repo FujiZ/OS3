@@ -34,7 +34,8 @@
 /* 可执行标识位 */
 #define EXECUTABLE 0x04u
 
-
+/*页面老化算法的周期*/
+#define CYCLE 1
 
 /* 定义字节类型 */
 #define BYTE unsigned char
@@ -57,6 +58,8 @@ typedef struct
 	BOOL edited; //页面修改标识
 	unsigned long auxAddr; //外存地址
 	unsigned long count; //页面使用计数器
+	unsigned char shiftReg;//移位寄存器，用于页面老化算法
+	unsigned char r;//页面访问位，表示最近一段时间该页面有无被访问
 } PageTableItem, *Ptr_PageTableItem;
 
 /*
@@ -130,5 +133,7 @@ void do_print_info();
 char *get_proType_str(char *, BYTE);
 
 void init_file();
+
+void do_update();
 
 #endif

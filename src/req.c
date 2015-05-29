@@ -1,4 +1,4 @@
-#include <unistd.h>
+ï»¿#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ipc.h>
@@ -6,37 +6,37 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "vmm.h"
-/* ²úÉú·Ã´æÇëÇó */
+/* äº§ç”Ÿè®¿å­˜è¯·æ±‚ */
 void do_request(Ptr_MemoryAccessRequest ptr_memAccReq){
 	char reqType;
-	printf("ÇëÊäÈë·Ã´æÇëÇóµÄµØÖ· ½ø³ÌºÅ\n");
+	printf("è¯·è¾“å…¥è®¿å­˜è¯·æ±‚çš„åœ°å€ è¿›ç¨‹å·\n");
 	scanf("%lu%u", &ptr_memAccReq->virAddr, &ptr_memAccReq->proccessNum);
 	while (getchar() != '\n');
-	printf("ÇëÊäÈë·Ã´æÇëÇóµÄÀàÐÍ£¨r/w/e)\n");
+	printf("è¯·è¾“å…¥è®¿å­˜è¯·æ±‚çš„ç±»åž‹ï¼ˆr/w/e)\n");
 	reqType = getchar();
 	while (getchar() != '\n');
 	switch (reqType){
-	case 'r'://¶ÁÇëÇó
+	case 'r'://è¯»è¯·æ±‚
 	{
 		ptr_memAccReq->reqType = REQUEST_READ;
-		printf("²úÉúÇëÇó£º\nµØÖ·£º%lu\t½ø³Ì: %u\tÀàÐÍ£º¶ÁÈ¡\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum);
+		printf("äº§ç”Ÿè¯·æ±‚ï¼š\nåœ°å€ï¼š%lu\tè¿›ç¨‹: %u\tç±»åž‹ï¼šè¯»å–\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum);
 		break;
 	}
-	case 'w': //Ð´ÇëÇó
+	case 'w': //å†™è¯·æ±‚
 	{
 		ptr_memAccReq->reqType = REQUEST_WRITE;
-		/* ¶ÁÈë´ýÐ´ÈëµÄÖµ */
-		printf("ÇëÊäÈëÒªÐÞ¸ÄµÄÖµ\n");
+		/* è¯»å…¥å¾…å†™å…¥çš„å€¼ */
+		printf("è¯·è¾“å…¥è¦ä¿®æ”¹çš„å€¼\n");
 		scanf("%hhu", &ptr_memAccReq->value);
 		while (getchar() != '\n');
 		ptr_memAccReq->value = random() % 0xFFu;
-		printf("²úÉúÇëÇó£º\nµØÖ·£º%lu\t½ø³Ì: %u\tÀàÐÍ£ºÐ´Èë\tÖµ£º%02X\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum, ptr_memAccReq->value);
+		printf("äº§ç”Ÿè¯·æ±‚ï¼š\nåœ°å€ï¼š%lu\tè¿›ç¨‹: %u\tç±»åž‹ï¼šå†™å…¥\tå€¼ï¼š%02X\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum, ptr_memAccReq->value);
 		break;
 	}
 	case 'e':
 	{
 		ptr_memAccReq->reqType = REQUEST_EXECUTE;
-		printf("²úÉúÇëÇó£º\nµØÖ·£º%lu\t½ø³Ì: %u\tÀàÐÍ£ºÖ´ÐÐ\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum);
+		printf("äº§ç”Ÿè¯·æ±‚ï¼š\nåœ°å€ï¼š%lu\tè¿›ç¨‹: %u\tç±»åž‹ï¼šæ‰§è¡Œ\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum);
 		break;
 	}
 	default:
@@ -47,31 +47,31 @@ void do_request(Ptr_MemoryAccessRequest ptr_memAccReq){
 void do_request_r(Ptr_MemoryAccessRequest ptr_memAccReq)
 {
 
-	/* ÇëÇóµØÖ· */
+	/* è¯·æ±‚åœ°å€ */
 	ptr_memAccReq->virAddr = random() % VIRTUAL_MEMORY_SIZE;
-	/* ÇëÇó½ø³Ì */
+	/* è¯·æ±‚è¿›ç¨‹ */
 	ptr_memAccReq->proccessNum = random() % PROCESS_SUM;
-	/* Ëæ»ú²úÉúÇëÇóÀàÐÍ */
+	/* éšæœºäº§ç”Ÿè¯·æ±‚ç±»åž‹ */
 	switch (random() % 3)
 	{
-		case 0: //¶ÁÇëÇó
+		case 0: //è¯»è¯·æ±‚
 		{
 			ptr_memAccReq->reqType = REQUEST_READ;
-			printf("²úÉúÇëÇó£º\nµØÖ·£º%lu\t½ø³Ì: %u\tÀàÐÍ£º¶ÁÈ¡\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum);
+			printf("äº§ç”Ÿè¯·æ±‚ï¼š\nåœ°å€ï¼š%lu\tè¿›ç¨‹: %u\tç±»åž‹ï¼šè¯»å–\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum);
 			break;
 		}
-		case 1: //Ð´ÇëÇó
+		case 1: //å†™è¯·æ±‚
 		{
 			ptr_memAccReq->reqType = REQUEST_WRITE;
-			/* Ëæ»ú²úÉú´ýÐ´ÈëµÄÖµ */
+			/* éšæœºäº§ç”Ÿå¾…å†™å…¥çš„å€¼ */
 			ptr_memAccReq->value = random() % 0xFFu;
-			printf("²úÉúÇëÇó£º\nµØÖ·£º%lu\t½ø³Ì: %u\tÀàÐÍ£ºÐ´Èë\tÖµ£º%02X\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum,ptr_memAccReq->value);
+			printf("äº§ç”Ÿè¯·æ±‚ï¼š\nåœ°å€ï¼š%lu\tè¿›ç¨‹: %u\tç±»åž‹ï¼šå†™å…¥\tå€¼ï¼š%02X\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum,ptr_memAccReq->value);
 			break;
 		}
 		case 2:
 		{
 			ptr_memAccReq->reqType = REQUEST_EXECUTE;
-			printf("²úÉúÇëÇó£º\nµØÖ·£º%lu\t½ø³Ì: %u\tÀàÐÍ£ºÖ´ÐÐ\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum);
+			printf("äº§ç”Ÿè¯·æ±‚ï¼š\nåœ°å€ï¼š%lu\tè¿›ç¨‹: %u\tç±»åž‹ï¼šæ‰§è¡Œ\n", ptr_memAccReq->virAddr, ptr_memAccReq->proccessNum);
 			break;
 		}
 		default:
