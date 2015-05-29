@@ -25,15 +25,14 @@ int count;//表示当前周期数
 
 void init_file(){
 	int i;
-	char* key = "0123456789ABCDEFGHIJKLMNOPQRSTUVMWYZabcdefghijklmnopqrstuvwxyz";
-	char buffer[VIRTUAL_MEMORY_SIZE + 1];
+	unsigned char buffer[VIRTUAL_MEMORY_SIZE + 1];
 
 	if (!(ptr_auxMem = fopen(AUXILIARY_MEMORY, "w"))){
 		do_error(ERROR_FILE_OPEN_FAILED);
 		exit(1);
 	}
 	for(i=0; i<VIRTUAL_MEMORY_SIZE; i++){
-		buffer[i] = key[rand() % 62];
+		buffer[i] =random() % 256;
 	}
 	buffer[VIRTUAL_MEMORY_SIZE] = '\0';
 
@@ -113,8 +112,8 @@ void do_init()
 	for (i = 0, blockCount=0; i < 2; ++i){
 		for (j = 0; j < INNER_PAGE_SUM; ++j){
 			/* 随机选择一些物理块进行页面装入 */
-			if(1)//将所有块填满，用来测试页表调度
-			//if (random() % 2 == 0)
+			//if(1)//将所有块填满，用来测试页表调度
+			if (random() % 2 == 0)
 			{
 				do_page_in(&pageTable[i][j], blockCount);
 				pageTable[i][j].blockNum = blockCount;
